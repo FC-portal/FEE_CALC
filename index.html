@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fee Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      text-transform: uppercase;
+      color: green;
+    }
+    form {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    select, input[type="number"], input[type="button"], input[type="submit"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="button"], input[type="submit"] {
+      width: auto;
+      cursor: pointer;
+      background-color: lightgreen;
+    }
+    input[type="button"]:hover, input[type="submit"]:hover {
+      background-color: limegreen;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    #aquacultureForm {
+      display: none;
+    }
+    #homeButtonContainer {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Fee Calculator</h1>
+    <div id="formsContainer">
+      <div id="standardForms">
+        <form id="feeCalculatorForm">
+          <label for="standard">SELECT STANDARD:</label>
+          <select id="standard" name="standard">
+            <option value="CFM">CFM</option>
+            <option value="FSMA">FSMA</option>
+            <option value="FSMA PSR">FSMA PSR</option>
+            <option value="GFS-IFA">GFS-IFA</option>
+            <option value="GFSI">GFSI</option>
+            <option value="GGFSA">GGFSA</option>
+            <option value="GRASP">GRASP</option>
+            <option value="IFA">IFA</option>
+            <option value="SPRING">SPRING</option>
+            <option value="TR4">TR4</option>
+          </select>
+
+          <label for="productCategory">SELECT PRODUCT CATEGORY:</label>
+          <select id="productCategory" name="productCategory">
+            <!-- Options will be populated by JavaScript -->
+          </select>
+
+          <label for="option">SELECT OPTION:</label>
+          <select id="option" name="option">
+            <option value="Option1">Option1</option>
+            <option value="Option2">Option2</option>
+          </select>
+
+          <div id="totalMembersContainer">
+            <label for="totalMembers">TOTAL MEMBERS:</label>
+            <input type="number" id="totalMembers" name="totalMembers">
+          </div>
+
+          <div id="coveredAreaContainer">
+            <label for="coveredArea">COVERED AREA - 1st HARVEST:</label>
+            <input type="number" id="coveredArea" name="coveredArea" step="0.01">
+          </div>
+
+          <div id="nonCoveredAreaContainer">
+            <label for="nonCoveredArea">NON-COVERED AREA IN HECTARES - 1st HARVEST:</label>
+            <input type="number" id="nonCoveredArea" name="nonCoveredArea" step="0.01">
+          </div>
+
+          <input type="button" value="Add Another Option" id="addAnotherOption">
+          <input type="submit" value="Calculate Total Fees">
+        </form>
+
+        <form id="aquacultureForm">
+          <label for="totalMetric">TOTAL METRIC (TONS, LIVE WEIGHT):</label>
+          <input type="number" id="totalMetric" name="totalMetric" step="0.01">
+
+          <label for="aquacultureOption">SELECT OPTION:</label>
+          <select id="aquacultureOption" name="aquacultureOption">
+            <option value="Option1">Option1</option>
+            <option value="Option2">Option2</option>
+          </select>
+
+          <div id="aquacultureTotalMembersContainer">
+            <label for="aquacultureTotalMembers">TOTAL MEMBERS:</label>
+            <input type="number" id="aquacultureTotalMembers" name="aquacultureTotalMembers">
+          </div>
+
+          <input type="button" value="Add Another Option" id="addAnotherAquacultureOption">
+          <input type="submit" value="Calculate Total Fees for Aquaculture">
+        </form>
+      </div>
+    </div>
+
+    <div id="result"></div>
+    <div id="homeButtonContainer">
+      <input type="button" value="Home" id="homeButton">
+    </div>
+  </div>
+
+  <script>
+    const productCategories = {
+      all: [
+        "Fruits and Vegetables",
+        "Combinable Crops",
+        "Tea",
+        "Hop",
+        "Flowers and Ornamentals",
+        "Plant Propagation Material",
+        "Aquaculture",
+        "Crops for Processing",
+        "CFM"
+      ],
+      IFA: [
+        "Fruits and Vegetables",
+        "Combinable Crops",
+        "Tea",
+        "Hop",
+        "Flowers and Ornamentals",
+        "Plant Propagation Material",
+        "Aquaculture",
+        "Crops for Processing"
+      ],
+      GGFSA: [
+        "Fruits and Vegetables",
+        "Combinable Crops",
+        "Tea",
+        "Hop"
+      ],
+      GRASP: [
+        "Fruits and Vegetables",
+        "Combinable Crops",
+        "Tea",
+        "Hop",
+        "Flowers and Ornamentals",
+        "Plant Propagation Material",
+        "Aquaculture",
+        "Crops for Processing"
+      ],
+      FSMA: [
+        "Fruits and Vegetables"
+      ],
+      CFM: [
+        "CFM"
+      ],
+      SPRING: [
+        "Fruits and Vegetables",
+        "Combinable Crops",
+        "Tea",
+        "Hop",
+        "Flowers and Ornamentals",
+        "Plant Propagation Material"
+      ],
+      GFSI: [
+        "Fruits and Vegetables",
+        "Hop",
+        "Aquaculture"
+      ],
+      TR4: [
+        "Fruits and Vegetables"
+      ]
+    };
+
+    const feeStructures = {
+      IFA: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Combinable Crops": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Tea": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Hop": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Flowers and Ornamentals": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Plant Propagation Material": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Aquaculture": {
+          farmedFish: [
+            { min: 0, max: 10, fee: 10 },
+            { min: 10, max: 100, fee: 50 },
+            { min: 100, max: 500, fee: 100 },
+            { min: 500, max: 1000, fee: 150 },
+            { min: 1000, max: 5000, fee: 500 },
+            { min: 5000, max: 10000, fee: 1000 },
+            { min: 10000, max: 25000, fee: 1500 },
+            { min: 25000, max: Infinity, fee: 2000 }
+          ],
+          broodstocks: [
+            { name: "Broodstocks", fee: 100 },
+            { name: "Seedlings-Ova", fee: 100 },
+            { name: "Seedlings-Juveniles", fee: 100 }
+          ]
+        },
+        "Crops for Processing": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.54 },
+            { min: 0.1, max: 0.5, fee: 10.6 },
+            { min: 0.5, max: 1, fee: 21.2 },
+            { min: 1, max: 1.5, fee: 31.8 },
+            { min: 1.5, max: 5, fee: 63.6 },
+            { min: 5, max: 10, fee: 106 },
+            { min: 10, max: 30, fee: 169.6 },
+            { min: 30, max: 100, fee: 318 },
+            { min: 100, max: 500, fee: 636 },
+            { min: 500, max: Infinity, fee: 1060 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.22 },
+            { min: 0.1, max: 0.5, fee: 4.24 },
+            { min: 0.5, max: 2, fee: 8.48 },
+            { min: 2, max: 5, fee: 21.2 },
+            { min: 5, max: 15, fee: 31.8 },
+            { min: 15, max: 100, fee: 63.6 },
+            { min: 100, max: 1000, fee: 148.4 },
+            { min: 1000, max: 5000, fee: 318 },
+            { min: 5000, max: 10000, fee: 636 },
+            { min: 10000, max: Infinity, fee: 1060 }
+          ]
+        }
+      },
+      GGFSA: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.14 },
+            { min: 0.1, max: 0.5, fee: 2.65 },
+            { min: 0.5, max: 1, fee: 5.3 },
+            { min: 1, max: 1.5, fee: 7.95 },
+            { min: 1.5, max: 5, fee: 15.9 },
+            { min: 5, max: 10, fee: 26.5 },
+            { min: 10, max: 30, fee: 42.4 },
+            { min: 30, max: 100, fee: 79.5 },
+            { min: 100, max: 500, fee: 159 },
+            { min: 500, max: Infinity, fee: 265 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.06 },
+            { min: 0.1, max: 0.5, fee: 1.06 },
+            { min: 0.5, max: 2, fee: 2.12 },
+            { min: 2, max: 5, fee: 5.3 },
+            { min: 5, max: 15, fee: 7.95 },
+            { min: 15, max: 100, fee: 15.9 },
+            { min: 100, max: 1000, fee: 37.1 },
+            { min: 1000, max: 5000, fee: 79.5 },
+            { min: 5000, max: 10000, fee: 159 },
+            { min: 10000, max: Infinity, fee: 265 }
+          ]
+        },
+        "Combinable Crops": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.14 },
+            { min: 0.1, max: 0.5, fee: 2.65 },
+            { min: 0.5, max: 1, fee: 5.3 },
+            { min: 1, max: 1.5, fee: 7.95 },
+            { min: 1.5, max: 5, fee: 15.9 },
+            { min: 5, max: 10, fee: 26.5 },
+            { min: 10, max: 30, fee: 42.4 },
+            { min: 30, max: 100, fee: 79.5 },
+            { min: 100, max: 500, fee: 159 },
+            { min: 500, max: Infinity, fee: 265 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.06 },
+            { min: 0.1, max: 0.5, fee: 1.06 },
+            { min: 0.5, max: 2, fee: 2.12 },
+            { min: 2, max: 5, fee: 5.3 },
+            { min: 5, max: 15, fee: 7.95 },
+            { min: 15, max: 100, fee: 15.9 },
+            { min: 100, max: 1000, fee: 37.1 },
+            { min: 1000, max: 5000, fee: 79.5 },
+            { min: 5000, max: 10000, fee: 159 },
+            { min: 10000, max: Infinity, fee: 265 }
+          ]
+        },
+        "Tea": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.14 },
+            { min: 0.1, max: 0.5, fee: 2.65 },
+            { min: 0.5, max: 1, fee: 5.3 },
+            { min: 1, max: 1.5, fee: 7.95 },
+            { min: 1.5, max: 5, fee: 15.9 },
+            { min: 5, max: 10, fee: 26.5 },
+            { min: 10, max: 30, fee: 42.4 },
+            { min: 30, max: 100, fee: 79.5 },
+            { min: 100, max: 500, fee: 159 },
+            { min: 500, max: Infinity, fee: 265 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.06 },
+            { min: 0.1, max: 0.5, fee: 1.06 },
+            { min: 0.5, max: 2, fee: 2.12 },
+            { min: 2, max: 5, fee: 5.3 },
+            { min: 5, max: 15, fee: 7.95 },
+            { min: 15, max: 100, fee: 15.9 },
+            { min: 100, max: 1000, fee: 37.1 },
+            { min: 1000, max: 5000, fee: 79.5 },
+            { min: 5000, max: 10000, fee: 159 },
+            { min: 10000, max: Infinity, fee: 265 }
+          ]
+        },
+        "Hop": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.14 },
+            { min: 0.1, max: 0.5, fee: 2.65 },
+            { min: 0.5, max: 1, fee: 5.3 },
+            { min: 1, max: 1.5, fee: 7.95 },
+            { min: 1.5, max: 5, fee: 15.9 },
+            { min: 5, max: 10, fee: 26.5 },
+            { min: 10, max: 30, fee: 42.4 },
+            { min: 30, max: 100, fee: 79.5 },
+            { min: 100, max: 500, fee: 159 },
+            { min: 500, max: Infinity, fee: 265 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.06 },
+            { min: 0.1, max: 0.5, fee: 1.06 },
+            { min: 0.5, max: 2, fee: 2.12 },
+            { min: 2, max: 5, fee: 5.3 },
+            { min: 5, max: 15, fee: 7.95 },
+            { min: 15, max: 100, fee: 15.9 },
+            { min: 100, max: 1000, fee: 37.1 },
+            { min: 1000, max: 5000, fee: 79.5 },
+            { min: 5000, max: 10000, fee: 159 },
+            { min: 10000, max: Infinity, fee: 265 }
+          ]
+        }
+      },
+      GRASP: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Combinable Crops": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Tea": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Hop": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Flowers and Ornamentals": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Plant Propagation Material": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Aquaculture": {
+          farmedFish: [
+            { min: 0, max: 10, fee: 10 },
+            { min: 10, max: 100, fee: 50 },
+            { min: 100, max: 500, fee: 100 },
+            { min: 500, max: 1000, fee: 150 },
+            { min: 1000, max: 5000, fee: 500 },
+            { min: 5000, max: 10000, fee: 1000 },
+            { min: 10000, max: 25000, fee: 1500 },
+            { min: 25000, max: Infinity, fee: 2000 }
+          ],
+          broodstocks: [
+            { name: "Broodstocks", fee: 100 },
+            { name: "Seedlings-Ova", fee: 100 },
+            { name: "Seedlings-Juveniles", fee: 100 }
+          ]
+        },
+        "Crops for Processing": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.54 },
+            { min: 0.1, max: 0.5, fee: 10.6 },
+            { min: 0.5, max: 1, fee: 21.2 },
+            { min: 1, max: 1.5, fee: 31.8 },
+            { min: 1.5, max: 5, fee: 63.6 },
+            { min: 5, max: 10, fee: 106 },
+            { min: 10, max: 30, fee: 169.6 },
+            { min: 30, max: 100, fee: 318 },
+            { min: 100, max: 500, fee: 636 },
+            { min: 500, max: Infinity, fee: 1060 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.22 },
+            { min: 0.1, max: 0.5, fee: 4.24 },
+            { min: 0.5, max: 2, fee: 8.48 },
+            { min: 2, max: 5, fee: 21.2 },
+            { min: 5, max: 15, fee: 31.8 },
+            { min: 15, max: 100, fee: 63.6 },
+            { min: 100, max: 1000, fee: 148.4 },
+            { min: 1000, max: 5000, fee: 318 },
+            { min: 5000, max: 10000, fee: 636 },
+            { min: 10000, max: Infinity, fee: 1060 }
+          ]
+        }
+      },
+      FSMA: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 19 },
+            { min: 0.1, max: 0.5, fee: 54 },
+            { min: 0.5, max: 1, fee: 104 },
+            { min: 1, max: 1.5, fee: 134 },
+            { min: 1.5, max: 5, fee: 218 },
+            { min: 5, max: 10, fee: 322 },
+            { min: 10, max: 30, fee: 370 },
+            { min: 30, max: 100, fee: 591 },
+            { min: 100, max: 500, fee: 1182 },
+            { min: 500, max: Infinity, fee: 2170 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 9 },
+            { min: 0.1, max: 0.5, fee: 22 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 64 },
+            { min: 5, max: 15, fee: 109 },
+            { min: 15, max: 100, fee: 193 },
+            { min: 100, max: 1000, fee: 325 },
+            { min: 1000, max: 5000, fee: 591 },
+            { min: 5000, max: 10000, fee: 1182 },
+            { min: 10000, max: Infinity, fee: 2170 }
+          ]
+        }
+      },
+      CFM: {
+        "CFM": {
+          covered: [
+            { min: 0, max: 1000, fee: 50 },
+            { min: 1000, max: 2500, fee: 75 },
+            { min: 2500, max: 5000, fee: 100 },
+            { min: 5000, max: 10000, fee: 150 },
+            { min: 10000, max: 25000, fee: 300 },
+            { min: 25000, max: 50000, fee: 500 },
+            { min: 50000, max: 100000, fee: 1000 },
+            { min: 100000, max: 200000, fee: 1500 },
+            { min: 200000, max: Infinity, fee: 2000 }
+          ]
+        }
+      },
+      SPRING: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Combinable Crops": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Tea": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Hop": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.27 },
+            { min: 0.1, max: 0.5, fee: 5.3 },
+            { min: 0.5, max: 1, fee: 10.6 },
+            { min: 1, max: 1.5, fee: 15.9 },
+            { min: 1.5, max: 5, fee: 31.8 },
+            { min: 5, max: 10, fee: 53 },
+            { min: 10, max: 30, fee: 84.8 },
+            { min: 30, max: 100, fee: 159 },
+            { min: 100, max: 500, fee: 318 },
+            { min: 500, max: Infinity, fee: 530 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        },
+        "Flowers and Ornamentals": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Plant Propagation Material": {
+          covered: [
+            { min: 0, max: 0.5, fee: 50 },
+            { min: 0.5, max: 1, fee: 100 },
+            { min: 1, max: 1.5, fee: 150 },
+            { min: 1.5, max: 5, fee: 300 },
+            { min: 5, max: 10, fee: 500 },
+            { min: 10, max: 30, fee: 800 },
+            { min: 30, max: 100, fee: 1500 },
+            { min: 100, max: 500, fee: 3000 },
+            { min: 500, max: Infinity, fee: 5000 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.5, fee: 20 },
+            { min: 0.5, max: 2, fee: 40 },
+            { min: 2, max: 5, fee: 100 },
+            { min: 5, max: 15, fee: 150 },
+            { min: 15, max: 100, fee: 300 },
+            { min: 100, max: 1000, fee: 700 },
+            { min: 1000, max: 5000, fee: 1500 },
+            { min: 5000, max: 10000, fee: 3000 },
+            { min: 10000, max: Infinity, fee: 5000 }
+          ]
+        },
+        "Aquaculture": {
+          farmedFish: [
+            { min: 0, max: 10, fee: 10 },
+            { min: 10, max: 100, fee: 50 },
+            { min: 100, max: 500, fee: 100 },
+            { min: 500, max: 1000, fee: 150 },
+            { min: 1000, max: 5000, fee: 500 },
+            { min: 5000, max: 10000, fee: 1000 },
+            { min: 10000, max: 25000, fee: 1500 },
+            { min: 25000, max: Infinity, fee: 2000 }
+          ],
+          broodstocks: [
+            { name: "Broodstocks", fee: 100 },
+            { name: "Seedlings-Ova", fee: 100 },
+            { name: "Seedlings-Juveniles", fee: 100 }
+          ]
+        },
+        "Crops for Processing": {
+          covered: [
+            { min: 0, max: 0.1, fee: 0.54 },
+            { min: 0.1, max: 0.5, fee: 10.6 },
+            { min: 0.5, max: 1, fee: 21.2 },
+            { min: 1, max: 1.5, fee: 31.8 },
+            { min: 1.5, max: 5, fee: 63.6 },
+            { min: 5, max: 10, fee: 106 },
+            { min: 10, max: 30, fee: 169.6 },
+            { min: 30, max: 100, fee: 318 },
+            { min: 100, max: 500, fee: 636 },
+            { min: 500, max: Infinity, fee: 1060 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.22 },
+            { min: 0.1, max: 0.5, fee: 4.24 },
+            { min: 0.5, max: 2, fee: 8.48 },
+            { min: 2, max: 5, fee: 21.2 },
+            { min: 5, max: 15, fee: 31.8 },
+            { min: 15, max: 100, fee: 63.6 },
+            { min: 100, max: 1000, fee: 148.4 },
+            { min: 1000, max: 5000, fee: 318 },
+            { min: 5000, max: 10000, fee: 636 },
+            { min: 10000, max: Infinity, fee: 1060 }
+          ]
+        }
+      },
+      GFSI: {
+        "Fruits and Vegetables": {
+          covered: [
+            { min: 0, max: 0.1, fee: 1 },
+            { min: 0.1, max: 0.5, fee: 7.5 },
+            { min: 0.5, max: 1, fee: 15 },
+            { min: 1, max: 1.5, fee: 23 },
+            { min: 1.5, max: 5, fee: 45 },
+            { min: 5, max: 10, fee: 75.4 },
+            { min: 10, max: 30, fee: 120 },
+            { min: 30, max: 100, fee: 220 },
+            { min: 100, max: 500, fee: 450 },
+            { min: 500, max: Infinity, fee: 730 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 1 },
+            { min: 0.1, max: 0.5, fee: 3 },
+            { min: 0.5, max: 2, fee: 6 },
+            { min: 2, max: 5, fee: 15 },
+            { min: 5, max: 15, fee: 23 },
+            { min: 15, max: 100, fee: 45 },
+            { min: 100, max: 1000, fee: 100 },
+            { min: 1000, max: 5000, fee: 220 },
+            { min: 5000, max: 10000, fee: 450 },
+            { min: 10000, max: Infinity, fee: 730 }
+          ]
+        },
+        "Hop": {
+          covered: [
+            { min: 0, max: 0.1, fee: 1 },
+            { min: 0.1, max: 0.5, fee: 7.5 },
+            { min: 0.5, max: 1, fee: 15 },
+            { min: 1, max: 1.5, fee: 23 },
+            { min: 1.5, max: 5, fee: 45 },
+            { min: 5, max: 10, fee: 75.4 },
+            { min: 10, max: 30, fee: 120 },
+            { min: 30, max: 100, fee: 220 },
+            { min: 100, max: 500, fee: 450 },
+            { min: 500, max: Infinity, fee: 730 }
+          ],
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 1 },
+            { min: 0.1, max: 0.5, fee: 3 },
+            { min: 0.5, max: 2, fee: 6 },
+            { min: 2, max: 5, fee: 15 },
+            { min: 5, max: 15, fee: 23 },
+            { min: 15, max: 100, fee: 45 },
+            { min: 100, max: 1000, fee: 100 },
+            { min: 1000, max: 5000, fee: 220 },
+            { min: 5000, max: 10000, fee: 450 },
+            { min: 10000, max: Infinity, fee: 730 }
+          ]
+        },
+        "Aquaculture": {
+          farmedFish: [
+            { min: 0, max: 10, fee: 11.2 },
+            { min: 10, max: 100, fee: 56 },
+            { min: 100, max: 500, fee: 112 },
+            { min: 500, max: 1000, fee: 168 },
+            { min: 1000, max: 5000, fee: 560 },
+            { min: 5000, max: 10000, fee: 1120 },
+            { min: 10000, max: 25000, fee: 1680 },
+            { min: 25000, max: Infinity, fee: 2240 }
+          ],
+          broodstocks: [
+            { name: "Broodstocks", fee: 112 },
+            { name: "Seedlings-Ova", fee: 112 },
+            { name: "Seedlings-Juveniles", fee: 112 }
+          ]
+        }
+      },
+      TR4: {
+        "Fruits and Vegetables": {
+          nonCovered: [
+            { min: 0, max: 0.1, fee: 0.11 },
+            { min: 0.1, max: 0.5, fee: 2.12 },
+            { min: 0.5, max: 2, fee: 4.24 },
+            { min: 2, max: 5, fee: 10.6 },
+            { min: 5, max: 15, fee: 15.9 },
+            { min: 15, max: 100, fee: 31.8 },
+            { min: 100, max: 1000, fee: 74.2 },
+            { min: 1000, max: 5000, fee: 159 },
+            { min: 5000, max: 10000, fee: 318 },
+            { min: 10000, max: Infinity, fee: 530 }
+          ]
+        }
+      }
+    };
+
+    document.getElementById('standard').addEventListener('change', function() {
+      const selectedStandard = this.value;
+      const productCategorySelect = document.getElementById('productCategory');
+      productCategorySelect.innerHTML = '';
+
+      const categories = productCategories[selectedStandard] || productCategories.all;
+      categories.forEach(category => {
+        let option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        productCategorySelect.appendChild(option);
+      });
+    });
+
+    // Initialize the product categories based on the default standard
+    document.getElementById('standard').dispatchEvent(new Event('change'));
+
+    let totalFeesList = [];
+
+    document.getElementById('totalMembersContainer').style.display = 'none';
+    document.getElementById('aquacultureTotalMembersContainer').style.display = 'none';
+
+    document.getElementById('option').addEventListener('change', function() {
+      var totalMembersContainer = document.getElementById('totalMembersContainer');
+      if (this.value === 'Option2') {
+        totalMembersContainer.style.display = 'block';
+      } else {
+        totalMembersContainer.style.display = 'none';
+      }
+    });
+
+    document.getElementById('aquacultureOption').addEventListener('change', function() {
+      var aquacultureTotalMembersContainer = document.getElementById('aquacultureTotalMembersContainer');
+      if (this.value === 'Option2') {
+        aquacultureTotalMembersContainer.style.display = 'block';
+      } else {
+        aquacultureTotalMembersContainer.style.display = 'none';
+      }
+    });
+
+    document.getElementById('productCategory').addEventListener('change', function() {
+      var feeCalculatorForm = document.getElementById('feeCalculatorForm');
+      var aquacultureForm = document.getElementById('aquacultureForm');
+      if (this.value === 'Aquaculture') {
+        feeCalculatorForm.style.display = 'none';
+        aquacultureForm.style.display = 'block';
+      } else {
+        feeCalculatorForm.style.display = 'block';
+        aquacultureForm.style.display = 'none';
+      }
+    });
+
+    document.getElementById('addAnotherOption').addEventListener('click', function() {
+      processForm('feeCalculatorForm');
+      resetForms();
+    });
+
+    document.getElementById('addAnotherAquacultureOption').addEventListener('click', function() {
+      processForm('aquacultureForm');
+      resetForms();
+    });
+
+    document.getElementById('feeCalculatorForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      processForm('feeCalculatorForm');
+      showResult();
+    });
+
+    document.getElementById('aquacultureForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      processForm('aquacultureForm');
+      showResult();
+    });
+
+    document.getElementById('homeButton').addEventListener('click', function() {
+      totalFeesList = [];
+      document.getElementById('result').innerHTML = '';
+      document.getElementById('formsContainer').style.display = 'block';
+      document.getElementById('homeButtonContainer').style.display = 'none';
+    });
+
+    function processForm(formId) {
+      if (formId === 'feeCalculatorForm') {
+        var standard = document.getElementById('standard').value;
+        var productCategory = document.getElementById('productCategory').value;
+        var option = document.getElementById('option').value;
+        var supplementFees = (option === 'Option2') ? parseFloat(document.getElementById('totalMembers').value) * 1 : 0;
+        var certificationFees = (option === 'Option2') ? 130 : 25;
+
+        var coveredArea = parseFloat(document.getElementById('coveredArea').value) || 0;
+        var nonCoveredArea = parseFloat(document.getElementById('nonCoveredArea').value) || 0;
+
+        var coveredAreaFees = 0;
+        var nonCoveredAreaFees = 0;
+
+        if (standard in feeStructures && productCategory in feeStructures[standard]) {
+          const feeStructure = feeStructures[standard][productCategory];
+
+          if (feeStructure.covered) {
+            coveredAreaFees = calculateAreaFees(coveredArea, feeStructure.covered);
+          }
+          
+          if (feeStructure.nonCovered) {
+            nonCoveredAreaFees = calculateAreaFees(nonCoveredArea, feeStructure.nonCovered);
+          }
+          
+          if (standard === 'GRASP' && productCategory === 'Aquaculture') {
+            var totalMetric = parseFloat(document.getElementById('totalMetric').value) || 0;
+            metricFees = calculateAreaFees(totalMetric, feeStructure.farmedFish);
+            feeStructure.broodstocks.forEach(broodstock => {
+              metricFees += broodstock.fee;
+            });
+            totalFees = certificationFees + supplementFees + metricFees;
+          }
+        }
+
+        var totalFees = supplementFees + coveredAreaFees + nonCoveredAreaFees + certificationFees;
+
+        totalFeesList.push({
+          type: `${standard}-${productCategory}-${option}`,
+          fees: totalFees,
+          details: {
+            supplementFees: supplementFees,
+            certificationFees: certificationFees,
+            coveredAreaFees: coveredAreaFees,
+            nonCoveredAreaFees: nonCoveredAreaFees
+          }
+        });
+      } else if (formId === 'aquacultureForm') {
+        var option = document.getElementById('aquacultureOption').value;
+        var totalMetric = parseFloat(document.getElementById('totalMetric').value) || 0;
+        var certificationFees = (option === 'Option2') ? 130 : 25;
+        var supplementFees = (option === 'Option2') ? parseFloat(document.getElementById('aquacultureTotalMembers').value) * 1 : 0;
+        var metricFees = 0;
+
+        if (standard === 'IFA' && productCategory === 'Aquaculture') {
+          const feeStructure = feeStructures[standard][productCategory];
+          
+          metricFees = calculateAreaFees(totalMetric, feeStructure.farmedFish);
+          feeStructure.broodstocks.forEach(broodstock => {
+            metricFees += broodstock.fee;
+          });
+        }
+
+        var totalFees = certificationFees + supplementFees + metricFees;
+
+        totalFeesList.push({
+          type: `Aquaculture-${option}`,
+          fees: totalFees,
+          details: {
+            certificationFees: certificationFees,
+            supplementFees: supplementFees,
+            metricFees: metricFees
+          }
+        });
+      }
+    }
+
+    function calculateAreaFees(area, feeStructure) {
+      for (let i = 0; i < feeStructure.length; i++) {
+        if (area >= feeStructure[i].min && area < feeStructure[i].max) {
+          return feeStructure[i].fee;
+        }
+      }
+      return 0;
+    }
+
+    function resetForms() {
+      document.getElementById('feeCalculatorForm').reset();
+      document.getElementById('aquacultureForm').reset();
+      document.getElementById('feeCalculatorForm').style.display = 'block';
+      document.getElementById('aquacultureForm').style.display = 'none';
+      document.getElementById('totalMembersContainer').style.display = 'none';
+      document.getElementById('aquacultureTotalMembersContainer').style.display = 'none';
+    }
+
+    function showResult() {
+      var resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = totalFeesList.map((item, index) => {
+        return `
+          <h3>${item.type}</h3>
+          <p>Total Fees: ${item.fees.toFixed(2)} €</p>
+          ${Object.keys(item.details).map(key => `<p>${key.replace(/([A-Z])/g, ' $1')}: ${item.details[key].toFixed(2)} €</p>`).join('')}
+        `;
+      }).join('');
+
+      resultDiv.innerHTML += `<h3>Total Combined Fees: ${totalFeesList.reduce((acc, item) => acc + item.fees, 0).toFixed(2)} €</h3>`;
+
+      document.getElementById('formsContainer').style.display = 'none';
+      document.getElementById('homeButtonContainer').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
